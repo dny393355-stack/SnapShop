@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import multer from "multer";
-import { Configuration, OpenAIApi } from "openai";
+import OpenAI from "openai"; // שיטה חדשה
 import { getJson } from "serpapi";
 import fs from "fs";
 
@@ -14,69 +14,70 @@ app.use(express.json());
 
 const upload = multer({ dest: "uploads/" });
 
-// הגדרת OpenAI
-const configuration = new Configuration({
+// הגדרת OpenAI בגרסה החדשה
+const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
-const openai = new OpenAIApi(configuration);
 
 app.get("/", (req, res) => {
-  res.json({ message: "SnapShop API is Running 🚀" });
+  res.json({ message: "SnapShop API is Online 🚀" });
 });
 
 app.post("/api/search", upload.single("image"), async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ error: "לא התקבלה תמונה" });
+    if (!req.file) return res.status(400).json({ error: "No image uploaded" });
 
-    // 1. זיהוי התמונה בעזרת OpenAI Vision
-    // הערה: בגרסאות חדשות משתמשים ב-chat.completions. אנחנו נתמקד בזיהוי טקסטואלי מהיר
+    // 1. קריאת התמונה והמרתה ל-Base64
     const imageBuffer = fs.readFileSync(req.file.path);
     const base64Image = imageBuffer.toString('base64');
 
-    // כאן אנחנו מבקשים מה-AI לזהות את המוצר
-    const aiResponse = await openai.createChatCompletion({
-      model: "gpt-4-vision-preview",
+    // 2. זיהוי התמונה עם OpenAI (גרסה חדשה)
+    const aiResponse = await openai.chat.completions.create({
+      model: "gpt-4o-mini", // דגם מהיר וזול יותר שתומך בראייה
       messages: [
         {
           role: "user",
           content: [
-            { type: "text", text: "What is this product? Give me only the brand and model name in 5 words max." },
-            { type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64Image}` } }
+            { type: "text", text: "Identify this product. Respond only with the exact brand and model name." },
+            {
+              type: "image_url",
+              image_url: { url: `data:image/jpeg;base64,${base64Image}` },
+            },
           ],
         },
       ],
-      max_tokens: 50,
     });
 
-    const productName = aiResponse.data.choices[0].message.content || "Product";
+    const productName = aiResponse.choices[0].message.content || "Product";
+    console.log("AI Identified:", productName);
 
-    // 2. חיפוש המוצר ב-Google Shopping דרך SerpApi
+    // 3. חיפוש ב-Google Shopping דרך SerpApi
     const searchResult = await getJson({
       engine: "google_shopping",
       q: productName,
       api_key: process.env.SERPAPI_KEY,
       hl: "he",
-      gl: "il" // חיפוש בישראל
+      gl: "il"
     });
 
     const topProduct = searchResult.shopping_results?.[0];
 
-    // 3. החזרת התוצאה ל-Frontend
+    // 4. שליחת התוצאה
     res.json({
       name: topProduct?.title || productName,
-      price: topProduct?.price || "לא נמצא מחיר",
-      store: topProduct?.source || "חנות לא ידועה",
+      price: topProduct?.price || "מחיר לא זמין",
+      store: topProduct?.source || "חנות כללית",
       link: topProduct?.link || `https://www.google.com/search?q=${productName}`
     });
 
-    // מחיקת הקובץ הזמני
+    // ניקוי הקובץ
     fs.unlinkSync(req.file.path);
 
   } catch (err) {
-    console.error("Error details:", err.response?.data || err.message);
-    res.status(500).json({ error: "תהליך הזיהוי נכשל" });
+    console.error("Server Error:", err);
+    res.status(500).json({ error: "Identification failed" });
   }
 });
 
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, "0.0.0.0", () => console.log(`Backend רץ על פורט ${PORT}`));
+app.listen(PORT, "0.0.0.0", () => console.log(`Backend live on port ${PORT}`));
