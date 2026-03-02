@@ -3,18 +3,18 @@ import cors from "cors";
 import dotenv from "dotenv";
 import multer from "multer";
 import { Configuration, OpenAIApi } from "openai";
-import fetch from "node-fetch";
+import fs from "fs"; // הוספתי את זה - זה היה חסר!
 
 dotenv.config();
 
 const app = express();
+
+// הגדרת CORS שתאפשר לכל אחד לדבר עם השרת
 app.use(cors());
 app.use(express.json());
 
-// Multer setup
 const upload = multer({ dest: "uploads/" });
 
-// OpenAI setup
 const configuration = new Configuration({
   apiKey: process.env.OPENAI_API_KEY,
 });
@@ -24,33 +24,28 @@ app.get("/", (req, res) => {
   res.json({ message: "Backend עובד 🚀" });
 });
 
-app.post("/identify-image", upload.single("image"), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: "לא התקבלה תמונה" });
-
+// שיניתי ל- /api/search שיתאים למה שכתבנו ב-Frontend
+app.post("/api/search", upload.single("image"), async (req, res) => {
   try {
-    // קרא את הקובץ
-    const imagePath = req.file.path;
+    if (!req.file) return res.status(400).json({ error: "לא התקבלה תמונה" });
 
-    // שלח את התמונה ל-OpenAI לזיהוי
-    const response = await openai.createImageVariation(
-      fs.createReadStream(imagePath),
-      1,
-      "512x512"
-    );
-
-    // כרגע מחזיר מידע לדוגמה עם שם התמונה
+    // כאן בהמשך נוסיף את החיפוש האמיתי בגוגל
+    // כרגע השרת יחזיר תשובה חיובית כדי לבדוק שהקשר עובד
     res.json({
-      product: "מוצר אמיתי לפי התמונה",
-      price: "$XXX", // אפשר למלא מאוחר יותר לפי חיפוש SerpAPI
-      source: "OpenAI API",
-      filename: req.file.originalname,
-      openaiResult: response.data,
+      name: "מוצר מזוהה (בבדיקה)",
+      price: "בבדיקה...",
+      store: "SnapShop AI",
+      link: "https://google.com"
     });
+
+    // מחיקת הקובץ הזמני מהשרת כדי לא למלא את הזיכרון
+    fs.unlinkSync(req.file.path);
+
   } catch (err) {
     console.error("שגיאה בשרת:", err);
-    res.status(500).json({ error: "שגיאה בשרת" });
+    res.status(500).json({ error: "שגיאה בתהליך הזיהוי" });
   }
 });
 
 const PORT = process.env.PORT || 5500;
-app.listen(PORT, () => console.log(`Backend של SnapShop רץ על פורט ${PORT} 🚀`));
+app.listen(PORT, "0.0.0.0", () => console.log(`Backend רץ על פורט ${PORT} 🚀`));
