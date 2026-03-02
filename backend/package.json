@@ -1,26 +1,30 @@
 {
-  "name": "backend",
+  "name": "snapshop-backend",
   "version": "1.0.0",
-  "description": "Backend של SnapShop",
+  "description": "Backend של SnapShop - זיהוי מוצרים וחיפוש מחירים",
   "type": "module",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "build": "echo 'No build step required for node backend'",
     "dev": "nodemon server.js"
   },
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "keywords": [],
-  "author": "",
+  "author": "Dani",
   "license": "ISC",
   "dependencies": {
-    "cors": "^2.8.6",
-    "dotenv": "^16.6.1",
-    "express": "^4.22.1",
-    "multer": "^2.1.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "multer": "^1.4.5-lts.1",
     "node-fetch": "^3.3.2",
-    "openai": "^6.25.0",
-    "serpapi": "^2.2.1"
+    "openai": "^4.52.0",
+    "serpapi": "^2.1.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14"
+    "nodemon": "^3.1.0"
   }
 }
