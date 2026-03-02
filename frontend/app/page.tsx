@@ -12,22 +12,21 @@ interface ProductInfo {
 export default function Home() {
   const [image, setImage] = useState<string | null>(null);
   const [product, setProduct] = useState<ProductInfo | null>(null);
-  const [loading, setLoading] = useState(false); // הוספתי מצב טעינה
+  const [loading, setLoading] = useState(false);
 
   const handleCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setImage(URL.createObjectURL(file));
-    setLoading(true); // מתחילים לחפש...
+    setLoading(true);
     setProduct(null);
 
-    // יצירת פורמט לשליחת קובץ
     const formData = new FormData();
     formData.append("image", file);
 
     try {
-      // כאן אנחנו פונים לכתובת ה-Backend שלך ב-Railway
+      // שימוש בכתובת הציבורית של ה-Backend שלך
       const response = await fetch("https://innovative-dream-production-b053.up.railway.app/api/search", {
         method: "POST",
         body: formData,
@@ -36,7 +35,7 @@ export default function Home() {
       if (!response.ok) throw new Error("Failed to fetch");
 
       const data = await response.json();
-      setProduct(data); // מעדכנים את המוצר האמיתי שחזר מה-AI
+      setProduct(data);
     } catch (error) {
       console.error("Error:", error);
       alert("משהו השתבש בחיפוש המוצר. וודא שה-Backend רץ.");
@@ -46,23 +45,17 @@ export default function Home() {
   };
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-primary via-secondary to-accent flex flex-col items-center justify-center overflow-hidden p-4 text-white">
+    <div className="relative min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-800 flex flex-col items-center justify-center p-4 text-white overflow-hidden">
       
-      {/* רקע בועות */}
-      <div className="absolute inset-0">
-        <div className="absolute w-96 h-96 bg-white/20 rounded-full animate-floatY -top-24 -left-24"></div>
-        <div className="absolute w-80 h-80 bg-white/15 rounded-full animate-floatY -bottom-16 -right-20"></div>
-      </div>
-
-      <div className="relative z-10 flex flex-col items-center text-center">
-        <h1 className="text-7xl md:text-8xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-primary via-secondary to-accent drop-shadow-md mb-4">
-          SnapShop ✨
+      <div className="relative z-10 flex flex-col items-center text-center max-w-2xl w-full">
+        <h1 className="text-6xl md:text-8xl font-black mb-4 tracking-tighter italic">
+          SnapShop <span className="text-pink-400">✨</span>
         </h1>
-        <p className="text-xl md:text-2xl mb-8 opacity-90">
-          צלם מוצר – גלה מחירים וחנויות בזמן אמת
+        <p className="text-lg md:text-xl mb-12 opacity-80 font-medium">
+          צלם – גלה מחירים – קנה מיד
         </p>
 
-        <label className="relative cursor-pointer inline-block mb-8">
+        <label className="relative cursor-pointer group">
           <input
             type="file"
             accept="image/*"
@@ -70,30 +63,32 @@ export default function Home() {
             onChange={handleCapture}
             className="sr-only"
           />
-          <span className="inline-block px-12 py-5 bg-gradient-to-r from-secondary to-highlight font-bold text-lg rounded-full shadow-2xl transition-transform hover:scale-105">
-            {loading ? "מחפש מוצרים... 🔍" : "צלם או העלה תמונה"}
-          </span>
+          <div className="px-10 py-5 bg-white text-indigo-900 font-black text-xl rounded-2xl shadow-[0_0_50px_rgba(255,255,255,0.3)] transition-all hover:scale-105 active:scale-95">
+            {loading ? "סורק מוצר... 🔍" : "צלם מוצר עכשיו"}
+          </div>
         </label>
 
         {image && (
-          <div className="flex flex-col items-center">
+          <div className="mt-12 flex flex-col items-center animate-in fade-in zoom-in duration-500">
             <img
               src={image}
-              alt="Captured"
-              className="w-64 h-64 object-cover rounded-xl shadow-2xl border-4 border-white/30 mb-6"
+              alt="Product"
+              className="w-48 h-48 object-cover rounded-3xl shadow-2xl border-4 border-white/20 mb-8"
             />
           </div>
         )}
 
         {product && (
-          <div className="bg-white rounded-xl shadow-2xl p-6 w-80 text-left text-gray-900 animate-fadeIn">
-            <h3 className="text-2xl font-bold text-primary mb-2">{product.name}</h3>
-            <p className="text-lg mb-1">מחיר: {product.price}</p>
-            <p className="text-lg mb-3">חנות: {product.store}</p>
+          <div className="bg-white text-black rounded-3xl p-8 w-full max-w-sm shadow-2xl animate-in slide-in-from-bottom duration-500">
+            <h3 className="text-2xl font-black mb-2 text-indigo-900">{product.name}</h3>
+            <div className="space-y-1 mb-6 text-gray-600 font-bold">
+              <p>💰 מחיר: {product.price}</p>
+              <p>🏪 חנות: {product.store}</p>
+            </div>
             <a
               href={product.link}
               target="_blank"
-              className="inline-block w-full text-center py-2 bg-accent text-white rounded-lg font-semibold hover:bg-secondary transition-colors"
+              className="block w-full text-center py-4 bg-pink-500 text-white rounded-2xl font-black text-lg hover:bg-pink-600 transition-colors shadow-lg"
             >
               לקנייה עכשיו
             </a>
