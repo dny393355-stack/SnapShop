@@ -13,14 +13,14 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, ".env") });
 
-// בדיקה ראשונית בלוגים שהמפתח נטען מהקובץ
+// בדיקה בלוגים שהמפתח נטען
 console.log("-----------------------------------------");
 console.log("מצב טעינת מפתח OpenAI:", process.env.OPENAI_API_KEY ? "נמצא ✅" : "לא נמצא ❌");
 console.log("-----------------------------------------");
 
 const app = express();
 
-// הגדרת CORS - מאפשר לאתר (Frontend) לדבר עם השרת ללא חסימות
+// הגדרת CORS - מאפשר לכל דומיין (Frontend) לדבר עם השרת
 app.use(cors({
   origin: "*", 
   methods: ["GET", "POST", "PUT", "DELETE"],
@@ -29,7 +29,7 @@ app.use(cors({
 
 app.use(express.json());
 
-// הגדרת multer לשמירת תמונות זמניות להעלאה
+// הגדרת multer - שומר תמונות זמנית בתיקיית uploads
 const upload = multer({ dest: "uploads/" });
 
 // אתחול OpenAI
@@ -39,26 +39,28 @@ const openai = new OpenAI({
 
 // בדיקת "דופק" לשרת
 app.get("/", (req, res) => {
-  res.json({ message: "SnapShop API is Online and CORS is open! 🚀" });
+  res.json({ message: "SnapShop API is Online! 🚀" });
 });
 
-// נקודת הקצה המרכזית - חיפוש מוצר לפי תמונה
+// נקודת הקצה המרכזית - זיהוי מוצר וחיפוש מחיר
 app.post("/api/search", upload.single("image"), async (req, res) => {
   try {
-    console.log("בקשה התקבלה ב-/api/search");
+    console.log("בקשה חדשה התקבלה ב-/api/search");
 
     if (!req.file) {
-      console.log("לא התקבל קובץ תמונה");
+      console.log("שגיאה: לא הועלה קובץ");
       return res.status(400).json({ error: "No image uploaded" });
     }
 
-    // 1. קריאת התמונה והמרתה לפורמט Base64 עבור ה-AI
+    // 1. קריאת התמונה והמרתה ל-Base64
     const imageBuffer = fs.readFileSync(req.file.path);
     const base64Image = imageBuffer.toString('base64');
 
-    console.log("מזהה מוצר באמצעות AI...");
+    // שליפת סוג התמונה (MIME Type) למשל: image/webp או image/jpeg
+    const mimeType = req.file.mimetype;
+    console.log(`מזהה מוצר בתמונה מסוג: ${mimeType}`);
 
-    // 2. זיהוי התמונה עם מודל Vision והנחיה משופרת
+    // 2. זיהוי התמונה עם OpenAI Vision
     const aiResponse = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -67,11 +69,12 @@ app.post("/api/search", upload.single("image"), async (req, res) => {
           content: [
             { 
               type: "text", 
-              text: "Identify the product in this image. Return ONLY the brand name and the specific model. Be extremely concise. Example: 'Nike Air Max 90'." 
+              text: "Identify the product in this image. Return ONLY the brand name and the specific model. Be extremely concise." 
             },
             {
               type: "image_url",
-              image_url: { url: `data:image/jpeg;base64,${base64Image}` },
+              // התיקון הקריטי: שולח את סוג התמונה המדויק שהועלה
+              image_url: { url: `data:${mimeType};base64,${base64Image}` },
             },
           ],
         },
@@ -81,7 +84,7 @@ app.post("/api/search", upload.single("image"), async (req, res) => {
     const productName = aiResponse.choices[0].message.content || "Product";
     console.log("ה-AI זיהה:", productName);
 
-    // 3. חיפוש המוצר ב-Google Shopping באמצעות SerpApi
+    // 3. חיפוש ב-Google Shopping דרך SerpApi
     console.log("מחפש מחירים עבור:", productName);
     const searchResult = await getJson({
       engine: "google_shopping",
@@ -93,7 +96,7 @@ app.post("/api/search", upload.single("image"), async (req, res) => {
 
     const topProduct = searchResult.shopping_results?.[0];
 
-    // 4. שליחת התשובה הסופית למשתמש
+    // 4. שליחת התשובה הסופית
     res.json({
       name: topProduct?.title || productName,
       price: topProduct?.price || "מחיר לא זמין",
@@ -101,16 +104,17 @@ app.post("/api/search", upload.single("image"), async (req, res) => {
       link: topProduct?.link || `https://www.google.com/search?q=${encodeURIComponent(productName)}`
     });
 
-    // מחיקת הקובץ הזמני מהשרת כדי לשמור על סדר
-    fs.unlinkSync(req.file.path);
+    // ניקוי הקובץ הזמני
+    if (fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+    }
 
   } catch (err) {
-    console.error("שגיאת שרת:", err);
+    console.error("שגיאת שרת מפורטת:", err);
     res.status(500).json({ error: "Internal Server Error", details: err.message });
   }
 });
 
-// הגדרת פורט גמיש (מתאים גם למחשב וגם ל-Railway)
 const PORT = process.env.PORT || 8080; 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`✅ SnapShop Backend is live on port ${PORT}`);
